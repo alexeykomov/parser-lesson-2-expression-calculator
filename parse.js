@@ -46,7 +46,6 @@ function createNumberNode(aValue) {
 
 function parsePrimaryExpression(aTokens) {
   let nextToken = peekNextToken(aTokens);
-  console.log('parsePrimaryExpression nextToken: ', nextToken);
   let expression;
   if (nextToken.type === Token.NUMBER) {
     consumeNextToken(aTokens, Token.NUMBER);
@@ -62,20 +61,17 @@ function parsePrimaryExpression(aTokens) {
   } else {
     throw new Error('Expected number or paren ' + peekNextToken(aTokens));
   }
-  console.log('expression: ', expression);
   return expression;
 }
 
 function parseAddExpression(aTokens) {
   let expression = parseMultiplyExpression(aTokens);
   let nextToken = peekNextToken(aTokens);
-  console.log('parseAddExpression nextToken: ', nextToken);
   while (nextToken && (nextToken.type === Token.PLUS || nextToken.type === Token.MINUS)) {
     consumeNextToken(aTokens, nextToken.type);
     expression = createExpressionNode(nextToken.type, expression,
         parseMultiplyExpression(aTokens));
     nextToken = peekNextToken(aTokens);
-    console.log('parseMultiplyExpression nextToken 2: ', nextToken);
   }
   return expression;
 }
@@ -83,23 +79,25 @@ function parseAddExpression(aTokens) {
 function parseMultiplyExpression(aTokens) {
   let expression = parsePrimaryExpression(aTokens);
   let nextToken = peekNextToken(aTokens);
-  console.log('parseMultiplyExpression nextToken: ', nextToken);
   while (nextToken && (nextToken.type === Token.MULTIPLY || nextToken.type === Token.DIVIDE)) {
     consumeNextToken(aTokens, nextToken.type);
     expression = createExpressionNode(nextToken.type, expression,
         parsePrimaryExpression(aTokens));
     nextToken = peekNextToken(aTokens);
-    console.log('parseMultiplyExpression nextToken 2: ', nextToken);
   }
   return expression;
 }
 
 function parse(aString) {
   index = 0;
-  return parseAddExpression(tokenize(aString));
+  const tokens = tokenize(aString);
+  const expressionTree = parseAddExpression(tokens);
+  if (index < tokens.length - 1) {
+    throw new SyntaxError('Unparsed tokens are left: ' + tokens.slice(index).
+        map(t => `${t.value}`));
+  }
+  return expressionTree;
 }
 
 exports.default = parse;
 exports.NodeType = NodeType;
-
-console.log(parse('(((((22 + 2 + (33 + 3) * 2 * (11 + 1)))) / 2))'));
