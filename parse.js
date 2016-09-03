@@ -2,33 +2,29 @@ const tokenize = require('./tokenize').default;
 const Token = require('./tokenize').Token;
 
 const NodeType = {
-  NUMBER: 1,
-  PLUS: 2,
-  MINUS: 3,
-  DIVIDE: 4,
-  MULTIPLY: 5
+  NUMBER: 'NUMBER',
+  PLUS: 'PLUS',
+  MINUS: 'MINUS',
+  DIVIDE: 'DIVIDE',
+  MULTIPLY: 'MULTIPLY'
 }
 
-let index = -1;
+let index = 0;
 
-function getNextToken(aTokens) {
+function consumeNextToken(aTokens, aTokenType) {
   let nextToken;
-  if (index + 1 < aTokens.length) {
-    nextToken = aTokens[++index];
+  if (index < aTokens.length) {
+    nextToken = aTokens[index++];
   }
-  else {
-    nextToken = null;
-  }
-  return nextToken;
+  if (aTokenType !== nextToken.type) {
+    throw new SyntaxError(`Expected token ${aTokenType}.`);
+  };
 }
 
 function peekNextToken(aTokens) {
   let nextToken;
-  if (index + 1 < aTokens.length) {
-    nextToken = aTokens[index + 1];
-  }
-  else {
-    nextToken = null;
+  if (index < aTokens.length) {
+    nextToken = aTokens[index];
   }
   return nextToken;
 }
@@ -50,53 +46,60 @@ function createNumberNode(aValue) {
 
 function parsePrimaryExpression(aTokens) {
   let nextToken = peekNextToken(aTokens);
-  console.log('nextToken: ', nextToken);
+  console.log('parsePrimaryExpression nextToken: ', nextToken);
   let expression;
   if (nextToken.type === Token.NUMBER) {
-    getNextToken(aTokens);
+    consumeNextToken(aTokens, Token.NUMBER);
     expression = createNumberNode(nextToken.value);
-    return expression;
   } else if (nextToken.type === Token.LEFT_PAREN) {
-    getNextToken(aTokens);
+    consumeNextToken(aTokens, Token.LEFT_PAREN);
     expression = parseAddExpression(aTokens);
-    if (peekNextToken(aTokens) !== Token.RIGHT_PAREN) {
-      throw new Error('Right paren \')\' was expected ' + peekNextToken(aTokens));
+    if (peekNextToken(aTokens).type !== Token.RIGHT_PAREN) {
+      throw new Error('Right paren ) was expected, got ' +
+          peekNextToken(aTokens).type);
     }
-    getNextToken(aTokens);
-    return expression;
+    consumeNextToken(aTokens, Token.RIGHT_PAREN);
   } else {
     throw new Error('Expected number or paren ' + peekNextToken(aTokens));
   }
+  console.log('expression: ', expression);
+  return expression;
 }
 
 function parseAddExpression(aTokens) {
-  let leftExpression = parseMultiplyExpression(aTokens);
+  let expression = parseMultiplyExpression(aTokens);
   let nextToken = peekNextToken(aTokens);
-  if (nextToken.type === Token.ADD || nextToken.type == Token.MINUS) {
-    getNextToken(aTokens);
-    return createExpressionNode(nextToken.type, leftExpression,
+  console.log('parseAddExpression nextToken: ', nextToken);
+  while (nextToken && (nextToken.type === Token.PLUS || nextToken.type === Token.MINUS)) {
+    consumeNextToken(aTokens, nextToken.type);
+    expression = createExpressionNode(nextToken.type, expression,
         parseMultiplyExpression(aTokens));
+    nextToken = peekNextToken(aTokens);
+    console.log('parseMultiplyExpression nextToken 2: ', nextToken);
   }
-  return leftExpression;
+  return expression;
 }
 
 function parseMultiplyExpression(aTokens) {
-  let leftExpression = parsePrimaryExpression(aTokens);
+  let expression = parsePrimaryExpression(aTokens);
   let nextToken = peekNextToken(aTokens);
-  if (nextToken.type === Token.DIVIDE || nextToken.type == Token.MULTIPLY) {
-    getNextToken(aTokens);
-    return createExpressionNode(nextToken.type, leftExpression,
+  console.log('parseMultiplyExpression nextToken: ', nextToken);
+  while (nextToken && (nextToken.type === Token.MULTIPLY || nextToken.type === Token.DIVIDE)) {
+    consumeNextToken(aTokens, nextToken.type);
+    expression = createExpressionNode(nextToken.type, expression,
         parsePrimaryExpression(aTokens));
+    nextToken = peekNextToken(aTokens);
+    console.log('parseMultiplyExpression nextToken 2: ', nextToken);
   }
-  return leftExpression;
+  return expression;
 }
 
 function parse(aString) {
-  index = -1;
-  parsePrimaryExpression(tokenize(aString));
+  index = 0;
+  return parseAddExpression(tokenize(aString));
 }
 
 exports.default = parse;
 exports.NodeType = NodeType;
 
-console.log(parse('(22 + 2)'));
+console.log(parse('(((((22 + 2 + (33 + 3) * 2 * (11 + 1)))) / 2))'));

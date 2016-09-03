@@ -99,5 +99,3 @@ function tokenize(aString) {
 
 exports.default = tokenize;
 exports.Token = Token;
-
-console.log(tokenize('(56 + 11) * ((22 + 2) / 4) * 2'));
